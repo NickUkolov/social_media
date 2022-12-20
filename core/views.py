@@ -3,7 +3,7 @@ from django.contrib.auth.models import User, auth
 from django.contrib import messages
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
-from core.models import Profile, Post
+from core.models import Profile, Post, LikePost
 
 
 @login_required(login_url='signin')
@@ -45,6 +45,43 @@ def settings(request):
         return redirect('settings')
 
     return render(request, 'setting.html', {'user_profile': user_profile})
+
+
+@login_required(login_url='signin')
+def like_post(request):
+
+    username = request.user.username
+    post_id = request.GET.get('post_id')
+
+    post = Post.objects.get(id=post_id)
+    like_filter = LikePost.objects.filter(post_id=post_id, username=username).first()
+
+    if like_filter == None:
+        new_like = LikePost.objects.create(post_id=post_id, username=username)
+        new_like.save()
+        post.likes_number += 1
+        post.save()
+        return redirect('/')
+    else:
+        like_filter.delete()
+        post.likes_number -= 1
+        post.save()
+        return redirect('/')
+
+
+@login_required(login_url='signin')
+def profile(request, pk):
+    user_object = User.objects.get(username=pk)
+    user_profile = Profile.objects.get(user=user_object)
+    user_posts = Post.objects.filter(user=pk)
+    user_posts_count = len(user_posts)
+    context = {
+        'user_object': user_object,
+        'user_profile': user_profile,
+        'user_posts_count': user_posts_count,
+        'user_posts': user_posts, 
+    }
+    return render(request, 'profile.html', context=context)
 
 
 @login_required(login_url='signin')
